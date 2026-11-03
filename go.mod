@@ -105,3 +105,5 @@ require (
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
+
+replace github.com/bluenviron/gohlslib/v2 => github.com/spectatr-ai/gohlslib/v2 v2.0.0-20261103055400-b1ae07bdf5de
