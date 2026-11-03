@@ -11,6 +11,7 @@ import (
 
 	"github.com/bluenviron/gortsplib/v5/pkg/description"
 	"github.com/bluenviron/gortsplib/v5/pkg/format"
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/ac3"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/av1"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h264"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
@@ -61,6 +62,13 @@ var offlineH264SPS = []byte{
 var offlineH264PPS = []byte{
 	0x68, 0xce, 0x3c, 0x80,
 }
+
+// silent 48 kHz frames with 1 to 6 channels, in this order
+//
+//go:embed offline_ac3.ac3
+var offlineAC3Frames []byte
+
+const offlineAC3FrameSize = 384
 
 type offlineSubStreamTrack struct {
 	wg             *sync.WaitGroup
@@ -163,6 +171,33 @@ func (t *offlineSubStreamTrack) run() {
 			}
 
 			payload := make(unit.PayloadMPEG4Audio, unitsPerWrite)
+			for i := range payload {
+				payload[i] = frame
+			}
+
+			t.subStream.WriteUnit(t.media, t.format, &unit.Unit{
+				PTS:     pts,
+				NTP:     time.Time{},
+				Payload: payload,
+			})
+
+			pts += writeDuration
+
+			ptsGo := multiplyAndDivide2(time.Duration(pts), time.Second, time.Duration(forma.ClockRate()))
+			systemTime := startSystemTime.Add(ptsGo)
+
+			if !t.sleep(systemTime) {
+				return
+			}
+		}
+
+	case *format.AC3:
+		unitsPerWrite := (forma.ClockRate() / ac3.SamplesPerFrame) / audioWritesPerSecond
+		writeDuration := ac3.SamplesPerFrame * int64(unitsPerWrite)
+		frame := offlineAC3Frames[(forma.ChannelCount-1)*offlineAC3FrameSize : forma.ChannelCount*offlineAC3FrameSize]
+
+		for {
+			payload := make(unit.PayloadAC3, unitsPerWrite)
 			for i := range payload {
 				payload[i] = frame
 			}

@@ -187,6 +187,16 @@ func mediasFromAlwaysAvailableTracks(alwaysAvailableTracks []conf.AlwaysAvailabl
 				}},
 			})
 
+		case conf.CodecAC3:
+			medias = append(medias, &description.Media{
+				Type: description.MediaTypeAudio,
+				Formats: []format.Format{&format.AC3{
+					PayloadTyp:   96,
+					SampleRate:   track.SampleRate,
+					ChannelCount: track.ChannelCount,
+				}},
+			})
+
 		case conf.CodecG711:
 			medias = append(medias, &description.Media{
 				Type: description.MediaTypeAudio,

@@ -9,9 +9,10 @@ paths:
   mypath:
     alwaysAvailable: true
     alwaysAvailableTracks:
-      # Available values are: AV1, VP9, H265, H264, Opus, MPEG4Audio, G711, LPCM
+      # Available values are: AV1, VP9, H265, H264, Opus, MPEG4Audio, AC3, G711, LPCM
       - codec: H264
-        # in case of MPEG4Audio, G711, LPCM, sampleRate and ChannelCount must be provided too.
+        # in case of MPEG4Audio, AC3, G711, LPCM, sampleRate and ChannelCount must be provided too.
+        # AC3 supports a sampleRate of 48000 and 1 to 6 channels.
         #  sampleRate: 48000
         #  channelCount: 2
         #  in case of G711, muLaw must be provided too.

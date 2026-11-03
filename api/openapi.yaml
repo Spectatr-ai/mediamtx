@@ -76,6 +76,7 @@ components:
         - H265
         - H264
         - MPEG4Audio
+        - AC3
         - Opus
         - G711
         - LPCM

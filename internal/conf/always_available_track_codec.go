@@ -12,6 +12,7 @@ const (
 	CodecH265       AlwaysAvailableTrackCodec = "H265"
 	CodecH264       AlwaysAvailableTrackCodec = "H264"
 	CodecMPEG4Audio AlwaysAvailableTrackCodec = "MPEG4Audio"
+	CodecAC3        AlwaysAvailableTrackCodec = "AC3"
 	CodecOpus       AlwaysAvailableTrackCodec = "Opus"
 	CodecG711       AlwaysAvailableTrackCodec = "G711"
 	CodecLPCM       AlwaysAvailableTrackCodec = "LPCM"

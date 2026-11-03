@@ -42,6 +42,14 @@ func (t *AlwaysAvailableTrack) UnmarshalJSON(b []byte) error {
 			return fmt.Errorf("channelCount must be between 1 and 6 for codec '%s'", t.Codec)
 		}
 
+	case CodecAC3:
+		if t.SampleRate != 48000 {
+			return fmt.Errorf("sampleRate must be 48000 for codec '%s'", t.Codec)
+		}
+		if t.ChannelCount < 1 || t.ChannelCount > 6 {
+			return fmt.Errorf("channelCount must be between 1 and 6 for codec '%s'", t.Codec)
+		}
+
 	case CodecG711, CodecLPCM:
 		if t.SampleRate == 0 {
 			return fmt.Errorf("sampleRate is mandatory for codec '%s'", t.Codec)

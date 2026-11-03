@@ -18,6 +18,11 @@ func formatMPEG4AudioConfig(asc *mpeg4audio.AudioSpecificConfig) string {
 		asc.Type, asc.SampleRate, asc.ChannelConfig)
 }
 
+func formatAC3Config(f *format.AC3) string {
+	return fmt.Sprintf("sampleRate=%d, channelCount=%d",
+		f.SampleRate, f.ChannelCount)
+}
+
 func formatG711Config(f *format.G711) string {
 	return fmt.Sprintf("MULaw=%v, sampleRate=%d, channelCount=%d",
 		f.MULaw, f.SampleRate, f.ChannelCount)
@@ -57,6 +62,15 @@ func mediasAreCompatible(medias1 []*description.Media, medias2 []*description.Me
 				if !reflect.DeepEqual(format1.Config, format2.Config) {
 					return fmt.Errorf("MPEG-4 audio configuration does not match, is %s, but stream expects %s",
 						formatMPEG4AudioConfig(format2.Config), formatMPEG4AudioConfig(format1.Config))
+				}
+
+			case *format.AC3:
+				format2 := medias2[i].Formats[j].(*format.AC3)
+
+				if format1.SampleRate != format2.SampleRate ||
+					format1.ChannelCount != format2.ChannelCount {
+					return fmt.Errorf("AC-3 configuration does not match, is %s, but stream expects %s",
+						formatAC3Config(format2), formatAC3Config(format1))
 				}
 
 			case *format.G711:
