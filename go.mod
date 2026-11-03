@@ -106,4 +106,4 @@ require (
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
 
-replace github.com/bluenviron/gohlslib/v2 => github.com/spectatr-ai/gohlslib/v2 v2.0.0-20261103055400-b1ae07bdf5de
+replace github.com/bluenviron/gohlslib/v2 => github.com/spectatr-ai/gohlslib/v2 v2.0.0-20261103074154-7d3f7875911c
