@@ -229,6 +229,40 @@ func ToStream(
 				})
 			})
 
+		case *codecs.MPEG1Audio:
+			medi = &description.Media{
+				Type:    description.MediaTypeAudio,
+				Formats: []format.Format{&format.MPEG1Audio{}},
+			}
+			newClockRate := medi.Formats[0].ClockRate()
+
+			c.OnDataMPEG1Audio(ctrack, func(pts int64, frames [][]byte) {
+				(*subStream).WriteUnit(medi, medi.Formats[0], &unit.Unit{
+					NTP:     handleNTP(pts),
+					PTS:     multiplyAndDivide(pts, int64(newClockRate), int64(ctrack.ClockRate)),
+					Payload: unit.PayloadMPEG1Audio(frames),
+				})
+			})
+
+		case *codecs.AC3:
+			medi = &description.Media{
+				Type: description.MediaTypeAudio,
+				Formats: []format.Format{&format.AC3{
+					PayloadTyp:   96,
+					SampleRate:   tcodec.SampleRate,
+					ChannelCount: tcodec.ChannelCount,
+				}},
+			}
+			newClockRate := medi.Formats[0].ClockRate()
+
+			c.OnDataAC3(ctrack, func(pts int64, frame []byte) {
+				(*subStream).WriteUnit(medi, medi.Formats[0], &unit.Unit{
+					NTP:     handleNTP(pts),
+					PTS:     multiplyAndDivide(pts, int64(newClockRate), int64(ctrack.ClockRate)),
+					Payload: unit.PayloadAC3{frame},
+				})
+			})
+
 		case *codecs.KLV:
 			medi = &description.Media{
 				Type: description.MediaTypeApplication,
