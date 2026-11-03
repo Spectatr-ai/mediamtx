@@ -1,0 +1,50 @@
+name: image
+run-name: image (${{ github.ref_name }})
+
+on:
+  push:
+    branches: [release-dev]
+    tags: ["v*-p*"]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    env:
+      CGO_ENABLED: "0"
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - run: go generate ./...
+
+      - run: go build -o binaries/mediamtx
+
+      - id: tag
+        run: |
+          case "$GITHUB_REF_TYPE" in
+            tag) echo "value=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT" ;;
+            branch) echo "value=dev-$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/prebuilt.Dockerfile
+          push: true
+          tags: ghcr.io/spectatr-ai/mediamtx:${{ steps.tag.outputs.value }}
