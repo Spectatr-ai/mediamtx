@@ -40,6 +40,22 @@ func FromStream(
 	var w *mcmpegts.Writer
 	var tracks []*mcmpegts.Track
 
+	gateAudio := slices.ContainsFunc(desc.Medias, func(media *description.Media) bool {
+		return slices.ContainsFunc(media.Formats, func(forma format.Format) bool {
+			switch forma.(type) {
+			case *format.H264, *format.H265:
+				return true
+			}
+			return false
+		})
+	})
+	videoStarted := false
+	var videoStartPTS int64
+
+	audioAllowed := func(pts int64) bool {
+		return !gateAudio || (videoStarted && pts >= videoStartPTS)
+	}
+
 	addTrack := func(
 		media *description.Media,
 		forma format.Format,
@@ -75,6 +91,8 @@ func FromStream(
 							}
 							dtsExtractor = &h265.DTSExtractor{}
 							dtsExtractor.Initialize()
+							videoStarted = true
+							videoStartPTS = u.PTS
 						}
 
 						dts, err := dtsExtractor.Extract(u.Payload.(unit.PayloadH265), u.PTS)
@@ -116,6 +134,8 @@ func FromStream(
 							}
 							dtsExtractor = &h264.DTSExtractor{}
 							dtsExtractor.Initialize()
+							videoStarted = true
+							videoStartPTS = u.PTS
 						}
 
 						dts, err := dtsExtractor.Extract(u.Payload.(unit.PayloadH264), u.PTS)
@@ -217,10 +237,15 @@ func FromStream(
 							return nil
 						}
 
+						pts := multiplyAndDivide(u.PTS, 90000, int64(clockRate))
+						if !audioAllowed(pts) {
+							return nil
+						}
+
 						sconn.SetWriteDeadline(time.Now().Add(writeTimeout))
 						err := (*w).WriteOpus(
 							track,
-							multiplyAndDivide(u.PTS, 90000, int64(clockRate)),
+							pts,
 							u.Payload.(unit.PayloadOpus))
 						if err != nil {
 							return err
@@ -257,6 +282,29 @@ func FromStream(
 					Config: *forma.Config,
 				}}
 
+				write := func(aus [][]byte, pts int64) error {
+					for len(aus) > 0 && !audioAllowed(multiplyAndDivide(pts, 90000, int64(clockRate))) {
+						aus = aus[1:]
+						pts += mpeg4audio.SamplesPerAccessUnit
+					}
+					if len(aus) == 0 {
+						return nil
+					}
+
+					sconn.SetWriteDeadline(time.Now().Add(writeTimeout))
+					err := (*w).WriteMPEG4Audio(
+						track,
+						multiplyAndDivide(pts, 90000, int64(clockRate)),
+						aus)
+					if err != nil {
+						return err
+					}
+					return bw.Flush()
+				}
+
+				var heldAUs [][]byte
+				var heldPTS int64
+
 				addTrack(
 					media,
 					forma,
@@ -266,15 +314,20 @@ func FromStream(
 							return nil
 						}
 
-						sconn.SetWriteDeadline(time.Now().Add(writeTimeout))
-						err := (*w).WriteMPEG4Audio(
-							track,
-							multiplyAndDivide(u.PTS, 90000, int64(clockRate)),
-							u.Payload.(unit.PayloadMPEG4Audio))
-						if err != nil {
-							return err
+						if gateAudio && !videoStarted {
+							heldAUs, heldPTS = u.Payload.(unit.PayloadMPEG4Audio), u.PTS
+							return nil
 						}
-						return bw.Flush()
+
+						if heldAUs != nil {
+							err := write(heldAUs, heldPTS)
+							heldAUs = nil
+							if err != nil {
+								return err
+							}
+						}
+
+						return write(u.Payload.(unit.PayloadMPEG4Audio), u.PTS)
 					})
 
 			case *format.MPEG4AudioLATM:
@@ -287,6 +340,11 @@ func FromStream(
 						track,
 						func(u *unit.Unit) error {
 							if u.NilPayload() {
+								return nil
+							}
+
+							pts := multiplyAndDivide(u.PTS, 90000, int64(clockRate))
+							if !audioAllowed(pts) {
 								return nil
 							}
 
@@ -311,7 +369,7 @@ func FromStream(
 							sconn.SetWriteDeadline(time.Now().Add(writeTimeout))
 							err = (*w).WriteMPEG4AudioLATM(
 								track,
-								multiplyAndDivide(u.PTS, 90000, int64(clockRate)),
+								pts,
 								[][]byte{buf})
 							if err != nil {
 								return err
@@ -328,10 +386,15 @@ func FromStream(
 								return nil
 							}
 
+							pts := multiplyAndDivide(u.PTS, 90000, int64(clockRate))
+							if !audioAllowed(pts) {
+								return nil
+							}
+
 							sconn.SetWriteDeadline(time.Now().Add(writeTimeout))
 							err := (*w).WriteMPEG4AudioLATM(
 								track,
-								multiplyAndDivide(u.PTS, 90000, int64(clockRate)),
+								pts,
 								[][]byte{u.Payload.(unit.PayloadMPEG4AudioLATM)})
 							if err != nil {
 								return err
@@ -349,6 +412,10 @@ func FromStream(
 					track,
 					func(u *unit.Unit) error {
 						if u.NilPayload() {
+							return nil
+						}
+
+						if !audioAllowed(u.PTS) {
 							return nil
 						}
 
@@ -376,12 +443,15 @@ func FromStream(
 						}
 
 						for i, frame := range u.Payload.(unit.PayloadAC3) {
-							framePTS := u.PTS + int64(i)*ac3.SamplesPerFrame
+							framePTS := multiplyAndDivide(u.PTS+int64(i)*ac3.SamplesPerFrame, 90000, int64(clockRate))
+							if !audioAllowed(framePTS) {
+								continue
+							}
 
 							sconn.SetWriteDeadline(time.Now().Add(writeTimeout))
 							err := (*w).WriteAC3(
 								track,
-								multiplyAndDivide(framePTS, 90000, int64(clockRate)),
+								framePTS,
 								frame)
 							if err != nil {
 								return err
