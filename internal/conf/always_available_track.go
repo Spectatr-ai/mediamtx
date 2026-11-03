@@ -38,8 +38,8 @@ func (t *AlwaysAvailableTrack) UnmarshalJSON(b []byte) error {
 		if t.SampleRate < 22050 {
 			return fmt.Errorf("sampleRate must be greater than or equal to 22050 for codec '%s'", t.Codec)
 		}
-		if t.ChannelCount == 0 {
-			return fmt.Errorf("channelCount is mandatory for codec '%s'", t.Codec)
+		if t.ChannelCount < 1 || t.ChannelCount > 6 {
+			return fmt.Errorf("channelCount must be between 1 and 6 for codec '%s'", t.Codec)
 		}
 
 	case CodecG711, CodecLPCM:
