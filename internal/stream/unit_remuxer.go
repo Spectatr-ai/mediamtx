@@ -124,8 +124,13 @@ func unitRemuxerH264(forma format.Format, payload unit.Payload) unit.Payload {
 		typ := h264.NALUType(nalu[0] & 0x1F)
 
 		switch typ {
-		case h264.NALUTypeSPS, h264.NALUTypePPS:
+		case h264.NALUTypeSPS:
 			continue
+
+		case h264.NALUTypePPS:
+			if bytes.Equal(nalu, formatH264.PPS) {
+				continue
+			}
 
 		case h264.NALUTypeAccessUnitDelimiter:
 			continue
@@ -160,8 +165,13 @@ func unitRemuxerH264(forma format.Format, payload unit.Payload) unit.Payload {
 		typ := h264.NALUType(nalu[0] & 0x1F)
 
 		switch typ {
-		case h264.NALUTypeSPS, h264.NALUTypePPS:
+		case h264.NALUTypeSPS:
 			continue
+
+		case h264.NALUTypePPS:
+			if bytes.Equal(nalu, formatH264.PPS) {
+				continue
+			}
 
 		case h264.NALUTypeAccessUnitDelimiter:
 			continue

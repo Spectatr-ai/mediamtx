@@ -17,6 +17,7 @@ func TestUnitRemuxer(t *testing.T) {
 		"av1-padding-only",
 		"h265",
 		"h264",
+		"h264-multiple-pps",
 		"mpeg4video",
 	} {
 		t.Run(ca, func(t *testing.T) {
@@ -81,6 +82,29 @@ func TestUnitRemuxer(t *testing.T) {
 				expectedPayload = unit.PayloadH264{
 					sps,
 					pps,
+					{0x65, 0x01},
+				}
+
+			case "h264-multiple-pps":
+				sps := []byte{0x67, 0x64, 0x00, 0x20}
+				pps0 := []byte{0x68, 0xee, 0x3c, 0x80}
+				pps1 := []byte{0x68, 0x53, 0x8f, 0x20}
+
+				forma = &format.H264{
+					PacketizationMode: 1,
+					SPS:               sps,
+					PPS:               pps1,
+				}
+				inputPayload = unit.PayloadH264{
+					sps,
+					pps0,
+					pps1,
+					{0x65, 0x01}, // IDR
+				}
+				expectedPayload = unit.PayloadH264{
+					sps,
+					pps1,
+					pps0,
 					{0x65, 0x01},
 				}
 
